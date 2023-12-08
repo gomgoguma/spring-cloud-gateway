@@ -1,10 +1,11 @@
 package com.example.scg.config;
 
+import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.config.annotation.web.reactive.EnableWebFluxSecurity;
+import org.springframework.security.config.web.server.SecurityWebFiltersOrder;
 import org.springframework.security.config.web.server.ServerHttpSecurity;
-import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 import org.springframework.security.web.server.SecurityWebFilterChain;
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.reactive.CorsConfigurationSource;
@@ -13,10 +14,13 @@ import org.springframework.web.cors.reactive.UrlBasedCorsConfigurationSource;
 import java.util.Arrays;
 import java.util.List;
 
+@RequiredArgsConstructor
 @Configuration
 @EnableWebFluxSecurity
 public class SecurityConfig {
 
+    private final JwtAuthenticationFilter jwtAuthenticationFilter;
+    private final AuthenticationExceptionEntryPoint authenticationExceptionEntryPoint;
     /*
     security 6.1.0부터 메서드 체이닝 지양, 람다식 권장
      */
@@ -30,11 +34,11 @@ public class SecurityConfig {
                                 .pathMatchers("/admin/**").hasAuthority("admin")
                                 .anyExchange().authenticated()
                 )
-//                .addFilterBefore(new JwtAuthenticationFilter(jwtTokenProvider), UsernamePasswordAuthenticationFilter.class)
-//                .addFilterBefore(exceptionHandlerFilter, JwtAuthenticationFilter.class)
-//                .exceptionHandling(exceptionHandlingSpec ->
-//                        exceptionHandlingSpec.authenticationEntryPoint( /*jwt 인증 실패 처리*/ )
-//                )
+                .addFilterAt(jwtAuthenticationFilter, SecurityWebFiltersOrder.AUTHENTICATION)
+//                .addFilterBefore(jwtExceptionHandlerFilter, SecurityWebFiltersOrder.AUTHENTICATION) -> 비동기 동작으로 예외 핸들링 어려움
+                .exceptionHandling(exceptionHandlingSpec ->
+                        exceptionHandlingSpec.authenticationEntryPoint(authenticationExceptionEntryPoint)
+                )
                 .cors(corsSpec ->
                         corsSpec.configurationSource(corsConfig())
                 )
